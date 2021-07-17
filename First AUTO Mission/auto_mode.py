@@ -11,7 +11,7 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 import sys
 
-from add_waypoint import Ui_Dialog
+from add_waypoint1 import Ui_Dialog
 from auto_mission import new_mission, close, returntolaunch, start
 
 
@@ -167,6 +167,12 @@ class Ui_MainWindow(object):
         self.takeoff.setEnabled(False)
         self.takeoff.clicked.connect(self.startMission)
         self.verticalLayout.addWidget(self.missionPlanner)
+        Dialog = QtWidgets.QDialog()
+        ui = Ui_Dialog()
+        ui.setupUi(Dialog)
+        self.verticalLayout.addWidget(Dialog)
+        #Dialog.show()
+        #Dialog.exec()
         self.verticalLayout_2.addLayout(self.verticalLayout)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
