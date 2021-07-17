@@ -20,6 +20,7 @@ class MyThread(QThread):
 
     change_value=pyqtSignal(float)
     change_gspeed=pyqtSignal(float)
+    change_vspeed=pyqtSignal(float)
 
     def run(self):
         print("Arming drone")
@@ -47,6 +48,7 @@ class MyThread(QThread):
             time.sleep(0.3)
             self.change_value.emit(altitude)
             self.change_gspeed.emit(vehicle.groundspeed)
+            self.change_vspeed.emit(-1*vehicle.velocity[2])
 
         self.change_value.emit(10.0)
         vehicle.mode = VehicleMode("AUTO")
@@ -57,6 +59,7 @@ class MyThread(QThread):
             print(vehicle.location.global_relative_frame.alt)
             self.change_value.emit(vehicle.location.global_relative_frame.alt)
             self.change_gspeed.emit(vehicle.groundspeed)
+            self.change_vspeed.emit(-1*vehicle.velocity[2])
 
             #distance_home()
             #vehicle.velocity[2]
@@ -466,11 +469,17 @@ class Ui_MainWindow(object):
         s=s[:5]
         self.label_14.setText(s+" m/s")
 
+    def setvspeed(self,speed):
+        s = str(speed)
+        s = s[:5]
+        self.label_12.setText(s + " m/s")
+
 
     def armTakeoff(self):
         self.thread = MyThread()
         self.thread.change_value.connect(self.setAltitudeValue)
         self.thread.change_gspeed.connect(self.setgspeed)
+        self.thread.change_vspeed.connect(self.setvspeed)
         self.thread.start()
 
     def retranslateUi(self, MainWindow):
