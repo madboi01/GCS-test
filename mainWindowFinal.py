@@ -21,6 +21,7 @@ class MyThread(QThread):
     change_value=pyqtSignal(float)
     change_gspeed=pyqtSignal(float)
     change_vspeed=pyqtSignal(float)
+    change_mode=pyqtSignal(str)
 
     def run(self):
         print("Arming drone")
@@ -49,10 +50,12 @@ class MyThread(QThread):
             self.change_value.emit(altitude)
             self.change_gspeed.emit(vehicle.groundspeed)
             self.change_vspeed.emit(-1*vehicle.velocity[2])
+            self.change_mode.emit(vehicle.mode.name)
 
         self.change_value.emit(10.0)
         vehicle.mode = VehicleMode("AUTO")
         time.sleep(5)
+        self.change_mode.emit(vehicle.mode.name)
         print(vehicle.mode.name)
         while vehicle.mode.name=="AUTO":
             time.sleep(0.3)
@@ -116,7 +119,7 @@ class Ui_MainWindow(object):
         self.connect.setStyleSheet("QPushButton{\n"
 "background-color:rgb(255,255,255);\n"
 "border-radius:5px;\n"
-"}\n""QPushButton:hover { background-color:rgb(223, 223, 223); }")
+"}\n""QPushButton:hover { background-color:rgb(223, 223, 223); }\n""QPushButton:focus { background-color:rgb(150, 223, 223); }")
         self.connect.setObjectName("pushButton")
         self.connect.setCursor(QCursor(QtCore.Qt.PointingHandCursor))
         self.horizontalLayout.addWidget(self.connect)
@@ -437,6 +440,12 @@ class Ui_MainWindow(object):
         self.tableWidget.setHorizontalHeaderItem(4, item)
         item = QtWidgets.QTableWidgetItem()
         self.tableWidget.setHorizontalHeaderItem(5, item)
+        self.tableWidget.setColumnWidth(0,300)
+        self.tableWidget.setColumnWidth(1,120)
+        self.tableWidget.setColumnWidth(2,120)
+        self.tableWidget.setColumnWidth(3,120)
+        self.tableWidget.setColumnWidth(4,90)
+        self.tableWidget.setColumnWidth(5,80)
         self.verticalLayout_13.addWidget(self.tableWidget)
         self.verticalLayout_14.addLayout(self.verticalLayout_13)
         MainWindow.setCentralWidget(self.centralwidget)
@@ -474,12 +483,16 @@ class Ui_MainWindow(object):
         s = s[:5]
         self.label_12.setText(s + " m/s")
 
+    def setmode(self,mode):
+        self.label_16.setText(mode)
+
 
     def armTakeoff(self):
         self.thread = MyThread()
         self.thread.change_value.connect(self.setAltitudeValue)
         self.thread.change_gspeed.connect(self.setgspeed)
         self.thread.change_vspeed.connect(self.setvspeed)
+        self.thread.change_mode.connect(self.setmode)
         self.thread.start()
 
     def retranslateUi(self, MainWindow):
@@ -501,7 +514,9 @@ class Ui_MainWindow(object):
         self.label_14.setText(_translate("MainWindow", "0.0 m/s"))
         self.label_11.setText(_translate("MainWindow", "VERTICAL SPEED"))
         self.label_12.setText(_translate("MainWindow", "0.0 m/s"))
-        self.label_16.setText(_translate("MainWindow", "0.0"))
+        self.label_15.setText(_translate("MainWindow", "MODE"))
+        self.label_16.setText(_translate("MainWindow", "STABILIZE"))
+        #self.label_17.setText(_translate("MainWindow",""))
         self.label_18.setText(_translate("MainWindow", "0.0"))
         self.tableWidget.setSortingEnabled(False)
         item = self.tableWidget.horizontalHeaderItem(0)
