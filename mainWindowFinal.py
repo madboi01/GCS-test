@@ -9,11 +9,14 @@
 import time
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtGui import QCursor
+from PyQt5.QtGui import QCursor, QDoubleValidator
+from PyQt5.QtWidgets import QMessageBox
 from dronekit import VehicleMode
 from PyQt5.QtCore import *
 
+from Widgets.add_waypoint import Ui_Dialog
 from auto_mission import new_mission, returntolaunch, vehicle
+
 
 
 class MyThread(QThread):
@@ -36,13 +39,13 @@ class MyThread(QThread):
             time.sleep(1)
 
         print("Takeoff")
-        vehicle.simple_takeoff(10)
+        vehicle.simple_takeoff(ui.talt)
 
         while True:
             altitude = vehicle.location.global_relative_frame.alt
             print(altitude)
 
-            if altitude >= 10 - 0.05:
+            if altitude >= ui.talt - 0.05:
                 print("Altitude reached")
                 break
 
@@ -52,9 +55,9 @@ class MyThread(QThread):
             self.change_vspeed.emit(-1*vehicle.velocity[2])
             self.change_mode.emit(vehicle.mode.name)
 
-        self.change_value.emit(10.0)
+        self.change_value.emit(vehicle.location.global_relative_frame.alt)
         vehicle.mode = VehicleMode("AUTO")
-        time.sleep(5)
+        time.sleep(3)
         self.change_mode.emit(vehicle.mode.name)
         print(vehicle.mode.name)
         while vehicle.mode.name=="AUTO":
@@ -66,6 +69,14 @@ class MyThread(QThread):
 
             #distance_home()
             #vehicle.velocity[2]
+            if (vehicle.location.global_relative_frame.alt)<=0.005:
+                break
+
+        vehicle.mode.name="STABILIZE"
+        time.sleep(3)
+        self.change_mode.emit(vehicle.mode.name)
+
+
 
 
 class Ui_MainWindow(object):
@@ -119,7 +130,7 @@ class Ui_MainWindow(object):
         self.connect.setStyleSheet("QPushButton{\n"
 "background-color:rgb(255,255,255);\n"
 "border-radius:5px;\n"
-"}\n""QPushButton:hover { background-color:rgb(223, 223, 223); }\n""QPushButton:focus { background-color:rgb(150, 223, 223); }")
+"}\n""QPushButton:hover { background-color:rgb(223, 223, 223); }\n")
         self.connect.setObjectName("pushButton")
         self.connect.setCursor(QCursor(QtCore.Qt.PointingHandCursor))
         self.horizontalLayout.addWidget(self.connect)
@@ -231,6 +242,7 @@ class Ui_MainWindow(object):
         self.addWaypoint.setObjectName("pushButton_5")
         self.addWaypoint.setCursor(QCursor(QtCore.Qt.PointingHandCursor))
         self.addWaypoint.clicked.connect(self.addwaypoint)
+        self.addWaypoint.setEnabled(False)
         self.verticalLayout.addWidget(self.addWaypoint)
         self.rtl = QtWidgets.QPushButton(self.frame_2)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
@@ -251,6 +263,7 @@ class Ui_MainWindow(object):
         self.rtl.setObjectName("pushButton_6")
         self.rtl.setCursor(QCursor(QtCore.Qt.PointingHandCursor))
         self.rtl.clicked.connect(self.addrtl)
+        self.rtl.setEnabled(False)
         self.verticalLayout.addWidget(self.rtl)
         self.verticalLayout_2.addWidget(self.frame_2)
         self.horizontalLayout_4.addWidget(self.groupBox_2)
@@ -423,7 +436,27 @@ class Ui_MainWindow(object):
         self.horizontalLayout_4.addWidget(self.frame_3)
         self.verticalLayout_13.addLayout(self.horizontalLayout_4)
 
+
+        self.horizontalLayout_5=QtWidgets.QHBoxLayout()
+        self.label_19=QtWidgets.QLabel()
+        self.label_19.setText("Enter Takeoff Altitude(Rel.): ")
+        self.label_19.setObjectName("label_19")
+        self.horizontalLayout_5.addWidget(self.label_19)
+        self.lineedit=QtWidgets.QLineEdit()
+        self.lineedit.setObjectName("lineedit")
+        self.taltvalidator = QDoubleValidator(0.0, 1000.0, 8)
+        self.lineedit.setValidator(self.taltvalidator)
+        self.horizontalLayout_5.addWidget(self.lineedit)
+        self.altSave=QtWidgets.QPushButton()
+        self.altSave.setText("Save")
+        self.altSave.setObjectName("altSave")
+        self.altSave.clicked.connect(self.saveAltitude)
+        self.horizontalLayout_5.addWidget(self.altSave)
+        self.verticalLayout_13.addLayout(self.horizontalLayout_5)
+
+        self.talt=0.0
         #TABLE WIDGET
+        self.row=0
         self.tableWidget = QtWidgets.QTableWidget(self.centralwidget)
         self.tableWidget.setObjectName("tableWidget")
         self.tableWidget.setColumnCount(6)
@@ -443,7 +476,7 @@ class Ui_MainWindow(object):
         self.tableWidget.setColumnWidth(0,300)
         self.tableWidget.setColumnWidth(1,120)
         self.tableWidget.setColumnWidth(2,120)
-        self.tableWidget.setColumnWidth(3,120)
+        self.tableWidget.setColumnWidth(3,105)
         self.tableWidget.setColumnWidth(4,90)
         self.tableWidget.setColumnWidth(5,80)
         self.verticalLayout_13.addWidget(self.tableWidget)
@@ -457,18 +490,78 @@ class Ui_MainWindow(object):
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
+    def saveAltitude(self):
+        if self.taltvalidator.validate(self.lineedit.text(), 0)[0]==2:
+            alt=self.lineedit.text()
+            self.talt=float(alt)
+            self.lineedit.setText("")
+            self.takeoff.setDisabled(False)
+        else:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText("Invalid takeoff altitude")
+            msg.setWindowTitle("INVALID")
+            msg.exec_()
+
+
+
     def closeconn(self):
             sys.exit()
 
 
     def newmission(self):
-            new_mission()
+        new_mission()
+        self.addWaypoint.setDisabled(False)
+        self.rtl.setDisabled(False)
+        self.takeoff.setEnabled(False)
 
     def addrtl(self):
             returntolaunch()
 
     def addwaypoint(self):
-            pass
+        self.Dialog = QtWidgets.QDialog()
+        self.ui = Ui_Dialog()
+        self.ui.setupUi(self.Dialog)
+        self.Dialog.show()
+        resp=self.Dialog.exec_()
+        if resp== QtWidgets.QDialog.Accepted:
+            if (self.ui.latvalidator.validate(self.ui.lineEdit.text(), 0)[0]==2 and self.ui.longvalidator.validate(self.ui.lineEdit_2.text(), 0)[0]==2 and self.ui.altvalidator.validate(self.ui.lineEdit_3.text(), 0)[0]==2):
+                self.newwaypoint()
+            else:
+                self.addwaypoint()
+
+
+    def newwaypoint(self):
+        state, lat, pos = self.ui.latvalidator.validate(self.ui.lineEdit.text(), 0)
+        self.lati = float(lat)
+        state, long, pos = self.ui.longvalidator.validate(self.ui.lineEdit_2.text(), 0)
+        self.longi = float(long)
+        state, alt, pos = self.ui.altvalidator.validate(self.ui.lineEdit_3.text(), 0)
+        self.alti = float(alt)
+        print(lat + " " + long + " " + alt)
+        print(type(self.lati))
+        print(type(self.longi))
+        print(type(self.alti))
+        self.addnewrow("WAYPOINT",lat,long,alt,"RELATIVE")
+
+    def addnewrow(self, command, lat, long, alt, frame):
+        self.tableWidget.setRowCount(self.row+1)
+        self.tableWidget.setItem(self.row,0,QtWidgets.QTableWidgetItem(command))
+        self.item3 = self.tableWidget.item(self.row, 0)
+        self.item3.setTextAlignment(Qt.AlignCenter)
+        self.tableWidget.setItem(self.row,1,QtWidgets.QTableWidgetItem(lat))
+        self.item=self.tableWidget.item(self.row,1)
+        self.item.setTextAlignment(Qt.AlignCenter)
+        self.tableWidget.setItem(self.row, 2, QtWidgets.QTableWidgetItem(long))
+        self.item1 = self.tableWidget.item(self.row, 2)
+        self.item1.setTextAlignment(Qt.AlignCenter)
+        self.tableWidget.setItem(self.row, 3, QtWidgets.QTableWidgetItem(alt))
+        self.item2 = self.tableWidget.item(self.row, 3)
+        self.item2.setTextAlignment(Qt.AlignCenter)
+        self.tableWidget.setItem(self.row, 4, QtWidgets.QTableWidgetItem(frame))
+        self.item4= self.tableWidget.item(self.row, 4)
+        self.item4.setTextAlignment(Qt.AlignCenter)
+        self.row+=1
 
     def setAltitudeValue(self,alt):
         self.label_3.setText(str(alt)+" m")
@@ -488,6 +581,10 @@ class Ui_MainWindow(object):
 
 
     def armTakeoff(self):
+        self.newMission.setEnabled(False)
+        self.addWaypoint.setEnabled(False)
+        self.rtl.setEnabled(False)
+        self.altSave.setEnabled(False)
         self.thread = MyThread()
         self.thread.change_value.connect(self.setAltitudeValue)
         self.thread.change_gspeed.connect(self.setgspeed)
@@ -506,6 +603,7 @@ class Ui_MainWindow(object):
         self.newMission.setText(_translate("MainWindow", "NEW MISSION"))
         self.addWaypoint.setText(_translate("MainWindow", "ADD WAYPOINT"))
         self.rtl.setText(_translate("MainWindow", "RETURN TO LAUNCH"))
+        self.altSave.setText(_translate("MainWindow","Save"))
         self.label.setText(_translate("MainWindow", "ALTITUDE REL."))
         self.label_3.setText(_translate("MainWindow", "0.0 m"))
         self.label_9.setText(_translate("MainWindow", "DIST TO WP"))
@@ -518,6 +616,7 @@ class Ui_MainWindow(object):
         self.label_16.setText(_translate("MainWindow", "STABILIZE"))
         #self.label_17.setText(_translate("MainWindow",""))
         self.label_18.setText(_translate("MainWindow", "0.0"))
+        self.label_19.setText(_translate("MainWindow", "Enter Takeoff Altitude(Rel.): "))
         self.tableWidget.setSortingEnabled(False)
         item = self.tableWidget.horizontalHeaderItem(0)
         item.setText(_translate("MainWindow", "Command"))
@@ -531,6 +630,8 @@ class Ui_MainWindow(object):
         item.setText(_translate("MainWindow", "Frame"))
         item = self.tableWidget.horizontalHeaderItem(5)
         item.setText(_translate("MainWindow", "Delete"))
+
+
 
 
 if __name__ == "__main__":
